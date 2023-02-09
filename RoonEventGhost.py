@@ -1,3 +1,5 @@
+#0.2
+
 import sys
 # path to roonapi folder
 sys.path.append('\\pyRoon\\pyRoonLibrary\\pyroon-master\\roonapi')
@@ -13,8 +15,8 @@ dataFolder = None
 dataFile = None
 inDebugger = getattr(sys, 'gettrace', None)
 appinfo = {
-    "extension_id": "sonnabend.roon.egvolume",
-    "display_name": "EG Volume",
+    "extension_id": "sonnabend.roon.servicemanager",
+    "display_name": "Roon Service Manager",
     "display_version": "1.0.0",
     "publisher": "sonnabend",
     "email": "",
