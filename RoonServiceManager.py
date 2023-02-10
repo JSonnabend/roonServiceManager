@@ -24,11 +24,13 @@ appinfo = {
 }
 roon = None
 logger = logging.getLogger('roonservicemanager')
-logger.level = logging.INFO
-handler = RotatingFileHandler('roonservicemanager.log', maxBytes=1e5, backupCount=5)
+# configure file logging
+file_handler = RotatingFileHandler('roonservicemanager.log', maxBytes=1e5, backupCount=5)
+file_handler.setLevel(logging.DEBUG)
 formatter = logging.Formatter(fmt='%(asctime)s %(levelname)s %(message)s', datefmt='%Y-%m-%d %H:%M:%S')
-handler.setFormatter(formatter)
-logger.addHandler(handler)
+file_handler.setFormatter(formatter)
+logger.addHandler(file_handler)
+# configure console logging
 stream_handler = logging.StreamHandler()
 stream_handler.setLevel(logging.DEBUG)
 stream_handler.setFormatter(formatter)
@@ -43,16 +45,17 @@ def main():
         global logger
         loadSettings()
         logLevelString = settings.get("log_level", "INFO").upper()
-        if logLevelString == "DEBUG":
-            logger.level = logging.DEBUG
+        if logLevelString == "DEBUG" or inDebugger():
+            level = logging.DEBUG
         elif logLevelString == "INFO":
-            logger.level = logging.INFO
+            level = logging.INFO
         elif logLevelString == "WARNING":
-            logger.level = logging.WARNING
+            level = logging.WARNING
         elif logLevelString == "ERROR":
-            logger.level = logging.ERROR
+            level = logging.ERROR
         elif logLevelString == "CRITICAL":
-            logger.level = logging.CRITICAL
+            level = logging.CRITICAL
+        logger.setLevel(level)
         # authorize if necessary
         try:
             if settings["core_id"].strip() == "" or settings["token"] == "":
@@ -64,6 +67,8 @@ def main():
         settings["core_id"] = roon.core_id
         settings["token"] = roon.token
         settings["ping_delay"] = settings.get("ping_delay", 60)
+        settings["max_allowed_response_time"] = settings.get("max_allowed_response_time", 15)
+        settings["roon_service_name"] = settings.get("roon_service_name", "RoonServer")
         ''' subscribe to status notifications '''
         # roon.register_state_callback(state_change_callback)
         ''' subscribe to queue notifications '''
@@ -75,7 +80,6 @@ def main():
             ping_core()
             logger.debug("waiting %s seconds until next ping." % settings["ping_delay"])
             time.sleep(settings["ping_delay"])
-            pass
 
     finally:
         #finally, save settings
@@ -176,8 +180,8 @@ def ping_core():
     except:
         logger.info("error pinging core %s. response time %s. restarting core now." % (coreString, responseTime))
         responseTime = 1e6
-    if responseTime > settings.get("max_allowed_response_time", 15):
-        restart_core_service(settings.get("roon_service_name", "RoonServer"))
+    if responseTime > settings["max_allowed_response_time"]:
+        restart_core_service(settings["roon_service_name"])
     pass
 
 def restart_core_service(serviceName):
@@ -204,11 +208,10 @@ def loadSettings():
     global dataFile
     global dataFolder
     logger.info("running from %s" % __file__)
-    # logger.info(os.environ)
-    if ("_" in __file__): # running in temp directory, so not from PyCharm
-        dataFolder = os.path.join(os.getenv('APPDATA'), 'pyRoonServiceManager')  #os.path.abspath(os.path.dirname(__file__))
-    else:
+    if inDebugger(): #("_" in __file__): # running in temp directory, so not from PyCharm
         dataFolder = os.path.dirname(__file__)
+    else:
+        dataFolder = os.path.join(os.getenv('APPDATA'), 'pyRoonServiceManager')  #os.path.abspath(os.path.dirname(__file__))
     dataFile = os.path.join(dataFolder , 'settings.dat')
     logger.info("using dataFile: %s" % dataFile)
     if not os.path.isfile(dataFile):
@@ -237,6 +240,9 @@ def isAdmin():
     except AttributeError:
         is_admin = ctypes.windll.shell32.IsUserAnAdmin() != 0
     return is_admin
+
+def inDebugger():
+    return not ("_" in __file__)
 
 if __name__ == "__main__":
     main()
