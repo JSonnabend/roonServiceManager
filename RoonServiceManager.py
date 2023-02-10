@@ -8,7 +8,9 @@ import time, os
 import json
 import socket
 import subprocess, shlex
-from constants import LOGGER
+# from constants import LOGGER
+import logging
+from logging.handlers import RotatingFileHandler
 
 settings = None
 dataFolder = None
@@ -17,11 +19,18 @@ inDebugger = getattr(sys, 'gettrace', None)
 appinfo = {
     "extension_id": "sonnabend.roon.servicemanager",
     "display_name": "Roon Service Manager",
-    "display_version": "1.0.0",
+    "display_version": "alpha",
     "publisher": "sonnabend",
     "email": "",
 }
 roon = None
+logger = logging.getLogger('roonservicemanagerlog')
+logger.level = logging.INFO
+handler = RotatingFileHandler('roonservicemanager.log', maxBytes=10000, backupCount=5)
+formatter = logging.Formatter(fmt='%(asctime)s %(levelname)-8s %(message)s', datefmt='%Y-%m-%d %H:%M:%S')
+handler.setFormatter(formatter)
+logger.addHandler(handler)
+
 
 
 def main():
@@ -39,12 +48,17 @@ def main():
         roon = connect(settings["core_id"], settings["token"])
         settings["core_id"] = roon.core_id
         settings["token"] = roon.token
-        # subscribe to status notifications
+        settings["ping_delay"] = settings.get("ping_delay", 60)
+        ''' subscribe to status notifications '''
         # roon.register_state_callback(state_change_callback)
-        hostname = socket.gethostname()
-        roon.register_volume_control("1", hostname, volume_control_callback, 0, "incremental")
+        ''' subscribe to queue notifications '''
+        # roon.register_queue_callback(queue_change_callback, "16017ce7f01013a8a2d865696c6e5bd8d542")
+        ''' register volume control '''
+        # hostname = socket.gethostname()
+        # roon.register_volume_control("1", hostname, volume_control_callback, 0, "incremental")
         while True:
-            time.sleep(0.1)
+            ping_core()
+            time.sleep(settings["ping_delay"])
             pass
 
     finally:
@@ -53,15 +67,15 @@ def main():
             saveSettings()
 
 def connect(core_id, token):
-    LOGGER.info("in connect\n  core_id: %s\n  token: %s" % (core_id,token))
+    logger.info("in connect\n  core_id: %s\n  token: %s" % (core_id,token))
     global appinfo
     try:
         discover = discovery.RoonDiscovery(core_id, dataFolder)
-        LOGGER.info("discover object: %s" % discover)
+        logger.info("discover object: %s" % discover)
         server = discover.first()
-        LOGGER.info("server object: %s:%s" % (server[0], server[1]))
+        logger.info("server object: %s:%s" % (server[0], server[1]))
         roon = roonapi.RoonApi(appinfo, token, server[0], server[1], True)
-        LOGGER.info("roon object: %s" % roon)
+        logger.info("roon object: %s" % roon)
         return roon
     except:
         return None
@@ -69,93 +83,110 @@ def connect(core_id, token):
         discover.stop()
 
 def authorize():
-    LOGGER.info("authorizing")
+    logger.info("authorizing")
     global appinfo
     global settings
 
-    LOGGER.info("discovering servers")
+    logger.info("discovering servers")
     discover = discovery.RoonDiscovery(None)
     servers = discover.all()
-    LOGGER.info("discover: %s\nservers: %s" % (discover, servers))
+    logger.info("discover: %s\nservers: %s" % (discover, servers))
 
-    LOGGER.info("Shutdown discovery")
+    logger.info("Shutdown discovery")
     discover.stop()
 
-    LOGGER.info("Found the following servers")
-    LOGGER.info(servers)
+    logger.info("Found the following servers")
+    logger.info(servers)
     apis = [roonapi.RoonApi(appinfo, None, server[0], server[1], False) for server in servers]
 
     auth_api = []
     while len(auth_api) == 0:
-        LOGGER.info("Waiting for authorisation")
+        logger.info("Waiting for authorisation")
         time.sleep(1)
         auth_api = [api for api in apis if api.token is not None]
 
     api = auth_api[0]
 
-    LOGGER.info("Got authorisation")
-    LOGGER.info("   host ip: " + api.host)
-    LOGGER.info("   core name: " + api.core_name)
-    LOGGER.info("   core id: " + api.core_id)
-    LOGGER.info("   token: " + api.token)
+    logger.info("Got authorisation")
+    logger.info("   host ip: " + api.host)
+    logger.info("   core name: " + api.core_name)
+    logger.info("   core id: " + api.core_id)
+    logger.info("   token: " + api.token)
     # This is what we need to reconnect
     settings["core_id"] = api.core_id
     settings["token"] = api.token
 
-    LOGGER.info("leaving authorize with settings: %s" % settings)
+    logger.info("leaving authorize with settings: %s" % settings)
 
-    LOGGER.info("Shutdown apis")
+    logger.info("Shutdown apis")
     for api in apis:
         api.stop()
 
+def queue_change_callback(queuedata):
+    global roon
+    """Call when something changes in roon queue."""
+    print("\n")
+    logger.info("queue_change_callback queuedata: %s" % (queuedata))
 
 def state_change_callback(event, changed_ids):
     global roon
     """Call when something changes in roon."""
-    LOGGER.info("\n-----")
-    LOGGER.info("state_change_callback event:%s changed_ids: %s" % (event, changed_ids))
-    LOGGER.info(" ")
+    print("\n")
+    logger.info("state_change_callback event:%s changed_ids: %s" % (event, changed_ids))
     for zone_id in changed_ids:
         zone = roon.zones[zone_id]
-        LOGGER.info("zone_id:%s zone_info: %s" % (zone_id, zone))
+        logger.info("zone_id:%s zone_info: %s" % (zone_id, zone))
 
 def volume_control_callback(control_key, event, value):
+   pass
+
+def ping_core():
+    global settings
     global roon
-    LOGGER.info("\n-----")
-    LOGGER.info("volume_control_callback control_key: %s event: %s value: %s" % (control_key, event, value))
-    command = None
-    param = None
-    if value == 1:
-        command = settings["command_volume_up"]["command"]
-        param = settings["command_volume_up"]["param"]
-    elif value == -1:
-        command = settings["command_volume_down"]["command"]
-        param = settings["command_volume_down"]["param"]
-    elif event == "set_mute":
-        command = settings["command_volume_mute"]["command"]
-        param = settings["command_volume_mute"]["param"]
-    if not command == None:
-        command = '"%s" %s' % (command,param)
-        LOGGER.info("running command %s" % (command))
+    try:
+        coreString = "'%s' at %s:%s" % (roon.core_name, roon.host, roon.port)
+        logger.info("pinging core %s." % coreString)
+        start = time.time()
+        response = roon.browse_browse(json.loads('{"hierarchy":"browse"}'))
+        end = time.time()
+        responseTime = round(end - start)
+        logger.info("response time %s." % responseTime)
+    except:
+        logger.info("error pinging core %s. restarting core now." % coreString)
+        responseTime = 1e6
+    if responseTime > settings.get("max_allowed_response_time", 15):
+        restart_core_service(settings.get("roon_service_name", "RoonServer"))
+    pass
+
+def restart_core_service(serviceName):
+    if isAdmin():
         try:
-            subprocess.run(shlex.split(command))
+            logger.info("stopping %s" % serviceName)
+            commandString = "net stop \"%s\""  % serviceName
+            os.system(commandString)
+            time.sleep(1)
+            commandString = "net start \"%s\""  % serviceName
+            os.system(commandString)
         except:
-            pass
-    roon.update_volume_control(control_key, 0, False)
+            logger.info("error restarting %s. check service status manually." % serviceName)
+            return
+    else:
+        logger.info('application must be running as admin to start/stop Windows services')
+    pass
 
 
 def loadSettings():
-    global dataFolder
-    global dataFile
     global settings
-    LOGGER.info("running from %s" % __file__)
-    # LOGGER.info(os.environ)
+    global dataFile
+    global dataFolder
+    logger.info("running from %s" % __file__)
+    # logger.info(os.environ)
     if ("_" in __file__): # running in temp directory, so not from PyCharm
-        dataFolder = os.path.join(os.getenv('APPDATA'), 'pyRoonEGVolume')  #os.path.abspath(os.path.dirname(__file__))
+        dataFolder = os.path.join(os.getenv('APPDATA'), 'pyRoonServiceManager')  #os.path.abspath(os.path.dirname(__file__))
     else:
         dataFolder = os.path.dirname(__file__)
     dataFile = os.path.join(dataFolder , 'settings.dat')
-    LOGGER.info("using dataFile: %s" % dataFile)
+    logger.info("using dataFile: %s" % dataFile)
     if not os.path.isfile(dataFile):
         f = open(dataFile, 'a').close()
     try:
@@ -173,6 +204,13 @@ def saveSettings():
         f = open(dataFile, 'w')
         f.write(data)
         f.close()
+
+def isAdmin():
+    try:
+        is_admin = (os.getuid() == 0)
+    except AttributeError:
+        is_admin = ctypes.windll.shell32.IsUserAnAdmin() != 0
+    return is_admin
 
 if __name__ == "__main__":
     main()
