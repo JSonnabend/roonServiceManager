@@ -2,7 +2,7 @@
 
 import sys
 # path to roonapi folder
-sys.path.append('\\pyRoon\\pyRoonLibrary\\pyroon-master\\roonapi')
+sys.path.append('\\pyRoon\\pyRoonLib\\roonapi')
 import roonapi, discovery, constants
 import time, os
 import json
