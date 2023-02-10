@@ -4,10 +4,9 @@ import sys
 # path to roonapi folder
 sys.path.append('\\pyRoon\\pyRoonLib\\roonapi')
 import roonapi, discovery, constants
-import time, os
+import time, os, ctypes
 import json
 import socket
-import subprocess, shlex
 # from constants import LOGGER
 import logging
 from logging.handlers import RotatingFileHandler
@@ -24,12 +23,16 @@ appinfo = {
     "email": "",
 }
 roon = None
-logger = logging.getLogger('roonservicemanagerlog')
+logger = logging.getLogger('roonservicemanager')
 logger.level = logging.INFO
-handler = RotatingFileHandler('roonservicemanager.log', maxBytes=10000, backupCount=5)
-formatter = logging.Formatter(fmt='%(asctime)s %(levelname)-8s %(message)s', datefmt='%Y-%m-%d %H:%M:%S')
+handler = RotatingFileHandler('roonservicemanager.log', maxBytes=1e5, backupCount=5)
+formatter = logging.Formatter(fmt='%(asctime)s %(levelname)s %(message)s', datefmt='%Y-%m-%d %H:%M:%S')
 handler.setFormatter(formatter)
 logger.addHandler(handler)
+stream_handler = logging.StreamHandler()
+stream_handler.setLevel(logging.DEBUG)
+stream_handler.setFormatter(formatter)
+logger.addHandler(stream_handler)
 
 
 
@@ -37,7 +40,19 @@ def main():
     try:
         global roon
         global settings
+        global logger
         loadSettings()
+        logLevelString = settings.get("log_level", "INFO").upper()
+        if logLevelString == "DEBUG":
+            logger.level = logging.DEBUG
+        elif logLevelString == "INFO":
+            logger.level = logging.INFO
+        elif logLevelString == "WARNING":
+            logger.level = logging.WARNING
+        elif logLevelString == "ERROR":
+            logger.level = logging.ERROR
+        elif logLevelString == "CRITICAL":
+            logger.level = logging.CRITICAL
         # authorize if necessary
         try:
             if settings["core_id"].strip() == "" or settings["token"] == "":
@@ -58,6 +73,7 @@ def main():
         # roon.register_volume_control("1", hostname, volume_control_callback, 0, "incremental")
         while True:
             ping_core()
+            logger.debug("waiting %s seconds until next ping." % settings["ping_delay"])
             time.sleep(settings["ping_delay"])
             pass
 
@@ -67,6 +83,7 @@ def main():
             saveSettings()
 
 def connect(core_id, token):
+    global logger
     logger.info("in connect\n  core_id: %s\n  token: %s" % (core_id,token))
     global appinfo
     try:
@@ -75,14 +92,16 @@ def connect(core_id, token):
         server = discover.first()
         logger.info("server object: %s:%s" % (server[0], server[1]))
         roon = roonapi.RoonApi(appinfo, token, server[0], server[1], True)
-        logger.info("roon object: %s" % roon)
+        logger.info("connected to roon core: %s" % roon)
         return roon
-    except:
+    except Exception as e:
+        raise e
         return None
     finally:
         discover.stop()
 
 def authorize():
+    global logger
     logger.info("authorizing")
     global appinfo
     global settings
@@ -108,10 +127,10 @@ def authorize():
     api = auth_api[0]
 
     logger.info("Got authorisation")
-    logger.info("   host ip: " + api.host)
-    logger.info("   core name: " + api.core_name)
-    logger.info("   core id: " + api.core_id)
-    logger.info("   token: " + api.token)
+    logger.info("\t\thost ip: " + api.host)
+    logger.info("\t\tcore name: " + api.core_name)
+    logger.info("\t\tcore id: " + api.core_id)
+    logger.info("\t\ttoken: " + api.token)
     # This is what we need to reconnect
     settings["core_id"] = api.core_id
     settings["token"] = api.token
@@ -123,6 +142,7 @@ def authorize():
         api.stop()
 
 def queue_change_callback(queuedata):
+    global logger
     global roon
     """Call when something changes in roon queue."""
     print("\n")
@@ -141,24 +161,27 @@ def volume_control_callback(control_key, event, value):
    pass
 
 def ping_core():
+    global logger
     global settings
     global roon
+    responseTime = "not calculated"
     try:
         coreString = "'%s' at %s:%s" % (roon.core_name, roon.host, roon.port)
-        logger.info("pinging core %s." % coreString)
+        logger.debug("pinging core %s." % coreString)
         start = time.time()
         response = roon.browse_browse(json.loads('{"hierarchy":"browse"}'))
         end = time.time()
         responseTime = round(end - start)
-        logger.info("response time %s." % responseTime)
+        logger.debug("response time %s." % responseTime)
     except:
-        logger.info("error pinging core %s. restarting core now." % coreString)
+        logger.info("error pinging core %s. response time %s. restarting core now." % (coreString, responseTime))
         responseTime = 1e6
     if responseTime > settings.get("max_allowed_response_time", 15):
         restart_core_service(settings.get("roon_service_name", "RoonServer"))
     pass
 
 def restart_core_service(serviceName):
+    global logger
     if isAdmin():
         try:
             logger.info("stopping %s" % serviceName)
@@ -176,6 +199,7 @@ def restart_core_service(serviceName):
 
 
 def loadSettings():
+    global logger
     global settings
     global dataFile
     global dataFolder
@@ -198,6 +222,7 @@ def loadSettings():
     return settings
 
 def saveSettings():
+    global logger
     global settings
     data = json.dumps(settings, indent=4)
     if (not data  == '{}') and (os.path.isfile(dataFile)):
@@ -206,6 +231,7 @@ def saveSettings():
         f.close()
 
 def isAdmin():
+    global logger
     try:
         is_admin = (os.getuid() == 0)
     except AttributeError:
