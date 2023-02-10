@@ -14,7 +14,6 @@ from logging.handlers import RotatingFileHandler
 settings = None
 dataFolder = None
 dataFile = None
-inDebugger = getattr(sys, 'gettrace', None)
 appinfo = {
     "extension_id": "sonnabend.roon.servicemanager",
     "display_name": "Roon Service Manager",
