@@ -7,7 +7,7 @@ def run(host="0.0.0.0", port="8007"):
     webserver.config['JSONIFY_PRETTYPRINT_REGULAR'] = True
     webserver.run(host, port)
 
-@webserver.route("/test")
+@webserver.route("/restart")
 def hello_world():
     return json.dumps({'message': 'hello'})
 
