@@ -4,7 +4,6 @@ import sys
 # path to roonapi folder
 sys.path.append('\\pyRoon\\pyRoonLib\\roonapi')
 import roonapi, discovery, constants
-import webserver
 import time, os, ctypes
 import json
 # import socket
@@ -81,7 +80,9 @@ def main():
         # roon.register_volume_control("1", hostname, volume_control_callback, 0, "incremental")
 
         '''start http server'''
+        import webserver
         settings["webserver_port"] = settings.get("webserver_port", 18007)
+        webserver.roon = roon
         thread = threading.Thread(target=webserver.run, kwargs={'port':settings["webserver_port"]})
         thread.start()
 
