@@ -4,13 +4,16 @@ import sys
 # path to roonapi folder
 sys.path.append('\\pyRoon\\pyRoonLib\\roonapi')
 import roonapi, discovery, constants
+import webserver
 import time, os, ctypes
 import json
-import socket
+# import socket
+import threading
 # from constants import LOGGER
 import logging
 from logging.handlers import RotatingFileHandler
 
+pingcount = 0
 settings = None
 dataFolder = None
 dataFile = None
@@ -55,6 +58,7 @@ def main():
         elif logLevelString == "CRITICAL":
             level = logging.CRITICAL
         logger.setLevel(level)
+
         # authorize if necessary
         try:
             if settings["core_id"].strip() == "" or settings["token"] == "":
@@ -65,9 +69,9 @@ def main():
         roon = connect(settings["core_id"], settings["token"])
         settings["core_id"] = roon.core_id
         settings["token"] = roon.token
-        settings["ping_delay"] = settings.get("ping_delay", 60)
         settings["max_allowed_response_time"] = settings.get("max_allowed_response_time", 15)
         settings["roon_service_name"] = settings.get("roon_service_name", "RoonServer")
+        settings["ping_delay"] = settings.get("ping_delay", 60)
         ''' subscribe to status notifications '''
         # roon.register_state_callback(state_change_callback)
         ''' subscribe to queue notifications '''
@@ -75,6 +79,15 @@ def main():
         ''' register volume control '''
         # hostname = socket.gethostname()
         # roon.register_volume_control("1", hostname, volume_control_callback, 0, "incremental")
+
+        '''start http server'''
+        settings["webserver_port"] = settings.get("webserver_port", 18007)
+        thread = threading.Thread(target=webserver.run, kwargs={'port':settings["webserver_port"]})
+        thread.start()
+
+        # '''start pinger'''
+        # thread2 = threading.Thread(target=ping_core)
+        # thread2.start()
         while True:
             ping_core()
             logger.debug("waiting %s seconds until next ping." % settings["ping_delay"])
@@ -164,13 +177,15 @@ def volume_control_callback(control_key, event, value):
    pass
 
 def ping_core():
+    global pingcount
     global logger
     global settings
     global roon
     responseTime = "not calculated"
     try:
+        pingcount += 1
         coreString = "'%s' at %s:%s" % (roon.core_name, roon.host, roon.port)
-        logger.debug("pinging core %s." % coreString)
+        logger.debug("pinging core %s. (%s)" % (coreString, pingcount))
         start = time.time()
         response = roon.browse_browse(json.loads('{"hierarchy":"browse"}'))
         end = time.time()
