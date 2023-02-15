@@ -1,7 +1,7 @@
 from flask import Flask, render_template
 import json
 webserver = Flask(__name__)
-roon = None
+roonservicemanager = None
 
 def run(host="0.0.0.0", port="8007"):
     webserver.config['JSONIFY_PRETTYPRINT_REGULAR'] = True
