@@ -72,7 +72,8 @@ class RoonServiceManager:
     def appinfo(self, value):
         self._appinfo = value
 
-    def __init__(self):
+    def __init__(self, appinfo=""):
+        self._appinfo = appinfo
         self.loadSettings()
         logLevelString = self._settings.get("log_level", "INFO").upper()
         if logLevelString == "DEBUG" or inDebugger():
@@ -217,20 +218,30 @@ class RoonServiceManager:
             self.restart_core_service()
 
     def restart_core_service(self):
-        if isAdmin():
-            try:
-                self._logger.info("stopping %s" % self._serviceName)
-                commandString = "net stop \"%s\""  % self._serviceName
-                os.system(commandString)
-                time.sleep(1)
-                commandString = "net start \"%s\""  % self._serviceName
-                os.system(commandString)
-            except:
-                self._logger.info("error restarting %s. check service status manually." % serviceName)
-                return
-        else:
-            self._logger.info('application must be running as admin to start/stop Windows services')
-        pass
+        try:
+            if isAdmin():
+                try:
+                    self._logger.info("stopping %s" % self._serviceName)
+                    import subprocess
+                    commandString = "net stop \"%s\""  % self._serviceName
+                    #CompletedProcess(args='net stop "None"', returncode=2, stdout=b'', stderr=b'The service name is invalid.\r\n\r\nMore help is available by typing NET HELPMSG 2185.\r\n\r\n')
+                    processResult = subprocess.run(commandString, capture_output=True)
+                    result = processResult.stdout
+                    # os.system(commandString)
+                    time.sleep(1)
+                    commandString = "net start \"%s\""  % self._serviceName
+                    processResult = subprocess.run(commandString, capture_output=True)
+                    result += '\n%s' % processResult.stdout
+                    # result = os.system(commandString)
+                except:
+                    self._logger.info("error restarting %s. check service status manually." % serviceName)
+                    result = "error restarting %s. check service status manually." % serviceName
+            else:
+                self._logger.info('application must be running as admin to start/stop Windows services')
+                result = 'application must be running as admin to start/stop Windows services'
+        finally:
+            return result
+
 
 
     def loadSettings(self):
@@ -270,8 +281,16 @@ def inDebugger():
     return not ("_" in __file__)
 
 def test():
-    from roon import Roon
-    roon = Roon(appinfo)
+    appinfo = {
+        "extension_id": "sonnabend.roon.servicemanager",
+        "display_name": "Roon Service Manager",
+        "display_version": "alpha 1.2",
+        "publisher": "sonnabend",
+        "email": "",
+    }
+    roonServiceManager = RoonServiceManager(appinfo)
+    roonServiceManager.start()
+    roonServiceManager.restart_core_service()
 
 
 if __name__ == "__main__":
