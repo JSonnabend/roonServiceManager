@@ -9,8 +9,7 @@ def run(host="0.0.0.0", port="8007"):
 
 @webserver.route("/restart")
 def hello_world():
-    roonservicemanager.restart_core_service()
-    return json.dumps({'message': 'hello'})
+    return roonservicemanager.restart_core_service()
 
 if __name__ == '__main__':
     from sys import argv

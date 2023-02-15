@@ -205,9 +205,10 @@ class RoonServiceManager:
         try:
             self._pingcount += 1
             coreString = "'%s' at %s:%s" % (self._roon.core_name, self._roon.host, self._roon.port)
-            self._logger.debug("pinging core %s. (%s)" % (coreString, pingcount))
+            self._logger.debug("pinging core %s. (%s)" % (coreString, self._pingcount))
             start = time.time()
             response = self._roon.browse_browse(json.loads('{"hierarchy":"browse"}'))
+            self._logger.debug("response %s." % response)
             end = time.time()
             responseTime = round(end - start)
             self._logger.debug("response time %s." % responseTime)
@@ -222,16 +223,20 @@ class RoonServiceManager:
             if isAdmin():
                 try:
                     self._logger.info("stopping %s" % self._serviceName)
-                    import subprocess
+                    from subprocess import run
                     commandString = "net stop \"%s\""  % self._serviceName
                     #CompletedProcess(args='net stop "None"', returncode=2, stdout=b'', stderr=b'The service name is invalid.\r\n\r\nMore help is available by typing NET HELPMSG 2185.\r\n\r\n')
-                    processResult = subprocess.run(commandString, capture_output=True)
-                    result = processResult.stdout
+                    processResult = run(commandString, capture_output=True)
+                    stderr = processResult.stderr.decode("utf-8")
+                    stdout = processResult.stdout.decode("utf-8")
+                    result = processResult.stdout if stdout.strip() != "" else stderr
                     # os.system(commandString)
                     time.sleep(1)
                     commandString = "net start \"%s\""  % self._serviceName
-                    processResult = subprocess.run(commandString, capture_output=True)
-                    result += '\n%s' % processResult.stdout
+                    processResult = run(commandString, capture_output=True)
+                    stderr = processResult.stderr.decode("utf-8")
+                    stdout = processResult.stdout.decode("utf-8")
+                    result += "\n" + (processResult.stdout if stdout.strip() != "" else stderr)
                     # result = os.system(commandString)
                 except:
                     self._logger.info("error restarting %s. check service status manually." % serviceName)
