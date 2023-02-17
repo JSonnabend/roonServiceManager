@@ -1,5 +1,6 @@
 from flask import Flask, render_template, request
 import json
+import shlex
 webserver = Flask(__name__)
 roonservicemanager = None
 
@@ -14,8 +15,29 @@ def restart():
 
 @webserver.route("/terminal")
 def terminal():
-    command = request.args.get('command')
-    return f"you sent command {command}"
+    line = request.args.get('line')
+    tokens = shlex.split(line.lower())
+    try:
+        command = tokens.pop(0)
+        match command:
+            case "restart":
+                result = f"{roonservicemanager.restart_core_service()}"
+            case "status":
+                result = f"{{'token':'{roonservicemanager.roon.token}','host':'{roonservicemanager.roon.host}'," \
+                         f"'port':'{roonservicemanager.roon.port}','core_id':'{roonservicemanager.roon.core_id}'" \
+                         f",'core_name':'{roonservicemanager.roon.core_name}'}}"
+            case "zones":
+                result = f"{json.dumps(roonservicemanager.roon.zones, indent=4)}"
+            case "log":
+                result = f"{roonservicemanager.getLog()}"
+            case "settings":
+                result = f"{json.dumps(roonservicemanager.settings, indent=4)}"
+            case _:
+                result = f"{{{command}}} not implemented."
+    except Exception as exception:
+        result = f"error running command line {line}"
+    finally:
+        return result
 @webserver.route("/")
 def index():
     return render_template("index.html")

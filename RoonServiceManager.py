@@ -65,12 +65,20 @@ class RoonServiceManager:
         self._serviceName = value
 
     @property
+    def settings(self):
+        return self._settings
+    @property
     def appinfo(self):
         return self._appinfo
 
     @appinfo.setter
     def appinfo(self, value):
         self._appinfo = value
+
+    @property
+    def roon(self):
+        # result = json.dumps(self._roon)
+        return self._roon
 
     def __init__(self, appinfo=""):
         self._appinfo = appinfo
@@ -247,8 +255,6 @@ class RoonServiceManager:
         finally:
             return result
 
-
-
     def loadSettings(self):
         self._logger.info("running from %s" % __file__)
         if inDebugger(): #("_" in __file__): # running in temp directory, so not from PyCharm
@@ -273,6 +279,14 @@ class RoonServiceManager:
             f = open(self._dataFile, 'w')
             f.write(data)
             f.close()
+
+    def getLog(self):
+        try:
+            logfile = open('roonservicemanager.log', 'r')
+            logcontents = logfile.read()
+            return logcontents
+        finally:
+            logfile.close()
 
 def isAdmin():
     global logger
