@@ -23,9 +23,11 @@ def terminal():
             case "restart":
                 result = f"{roonservicemanager.restart_core_service()}"
             case "status":
-                result = f"{{'token':'{roonservicemanager.roon.token}','host':'{roonservicemanager.roon.host}'," \
-                         f"'port':'{roonservicemanager.roon.port}','core_id':'{roonservicemanager.roon.core_id}'" \
-                         f",'core_name':'{roonservicemanager.roon.core_name}'}}"
+                result = {'token':roonservicemanager.roon.token,'host':roonservicemanager.roon.host, \
+                         'port':roonservicemanager.roon.port,'core_id':roonservicemanager.roon.core_id \
+                         ,'core_name':roonservicemanager.roon.core_name \
+                         ,'last_ping':roonservicemanager.lastping}
+                result = json.dumps(result, indent=4)
             case "zones":
                 result = f"{json.dumps(roonservicemanager.roon.zones, indent=4)}"
             case "log":

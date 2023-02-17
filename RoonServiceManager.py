@@ -4,7 +4,7 @@ import sys
 # path to roonapi folder
 sys.path.append('\\pyRoon\\pyRoonLib\\roonapi')
 import roonapi, discovery, constants
-import time, os, ctypes
+import time, datetime, os, ctypes
 import json
 import threading
 # from constants import LOGGER
@@ -43,6 +43,7 @@ class RoonServiceManager:
     global logger
     _logger = logger
     _pingcount = 0
+    _lastping = None
     _settings = None
     _dataFolder = None
     _dataFile = None
@@ -79,6 +80,14 @@ class RoonServiceManager:
     def roon(self):
         # result = json.dumps(self._roon)
         return self._roon
+
+    @property
+    def pingcount(self):
+        return self._pingcount
+
+    @property
+    def lastping(self):
+        return self._lastping
 
     def __init__(self, appinfo=""):
         self._appinfo = appinfo
@@ -214,15 +223,19 @@ class RoonServiceManager:
             self._pingcount += 1
             coreString = "'%s' at %s:%s" % (self._roon.core_name, self._roon.host, self._roon.port)
             self._logger.debug("pinging core %s. (%s)" % (coreString, self._pingcount))
-            start = time.time()
+            # start = time.time()
+            start = datetime.datetime.now()
             response = self._roon.browse_browse(json.loads('{"hierarchy":"browse"}'))
             self._logger.debug("response %s." % response)
-            end = time.time()
-            responseTime = round(end - start)
+            end = datetime.datetime.now()
+            responseTime = end.timestamp() - start.timestamp()
             self._logger.debug("response time %s." % responseTime)
         except:
             self._logger.info("error pinging core %s. response time %s. restarting core now." % (coreString, responseTime))
             responseTime = 1e6
+        finally:
+            pingTime = start.__str__()
+            self._lastping = {'pingcount':self._pingcount,'pingtime':pingTime,'responseTime':responseTime, 'response': response}
         if responseTime > self._settings["max_allowed_response_time"]:
             self.restart_core_service()
 

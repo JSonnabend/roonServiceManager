@@ -3,7 +3,7 @@ $(function() {
         options: [],
         args: []
     };
-    var commands = ['restart', 'status', 'zones', 'log', 'settings', 'help', 'echo', 'cls'];
+    var commands = ['restart', 'status', 'zones', 'log', 'ping', 'settings', 'cls', 'help'];
 
 
 
