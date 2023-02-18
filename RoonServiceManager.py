@@ -47,7 +47,6 @@ class RoonServiceManager:
     _settings = None
     _dataFolder = None
     _dataFile = None
-    _serviceName = None
     _appinfo = {
         "extension_id": "",
         "display_name": "",
@@ -57,13 +56,6 @@ class RoonServiceManager:
     }
     _roon = None
 
-    @property
-    def servicename(self):
-        return self._serviceName
-
-    @servicename.setter
-    def servicename(self, value):
-        self._serviceName = value
 
     @property
     def settings(self):
@@ -120,6 +112,7 @@ class RoonServiceManager:
             self._settings["max_allowed_response_time"] = self._settings.get("max_allowed_response_time", 15)
             self._settings["roon_service_name"] = self._settings.get("roon_service_name", "RoonServer")
             self._settings["ping_delay"] = self._settings.get("ping_delay", 60)
+            self._settings["roon_service_name"] = self._settings.get("roon_service_name", "RoonServer")
             ''' subscribe to status notifications '''
             # self._roon.register_state_callback(self._state_change_callback)
             ''' subscribe to queue notifications '''
@@ -243,25 +236,31 @@ class RoonServiceManager:
         try:
             if isAdmin():
                 try:
-                    self._logger.info("stopping %s" % self._serviceName)
+                    self._logger.info(f"stopping {self._settings['roon_service_name']}")
                     from subprocess import run
-                    commandString = "net stop \"%s\""  % self._serviceName
+                    commandString = f"net stop \"{self._settings['roon_service_name']}\""
                     #CompletedProcess(args='net stop "None"', returncode=2, stdout=b'', stderr=b'The service name is invalid.\r\n\r\nMore help is available by typing NET HELPMSG 2185.\r\n\r\n')
                     processResult = run(commandString, capture_output=True)
-                    stderr = processResult.stderr.decode("utf-8")
-                    stdout = processResult.stdout.decode("utf-8")
+                    stderr = processResult.stderr.decode('utf-8')
+                    stdout = processResult.stdout.decode('utf-8')
                     result = processResult.stdout if stdout.strip() != "" else stderr
+                    result = str(result, 'utf-8')
+                    self._logger.info(f"{result}")
                     # os.system(commandString)
                     time.sleep(1)
-                    commandString = "net start \"%s\""  % self._serviceName
+                    commandString = f"net start \"{self._settings['roon_service_name']}\""
                     processResult = run(commandString, capture_output=True)
                     stderr = processResult.stderr.decode("utf-8")
                     stdout = processResult.stdout.decode("utf-8")
-                    result += "\n" + (processResult.stdout if stdout.strip() != "" else stderr)
+                    # result = result + "\n"
+                    nextresult = processResult.stdout if stdout.strip() != "" else stderr
+                    nextresult = str(nextresult, 'utf-8')
+                    result = result + "\n" + nextresult
+                    self._logger.info(f"{result}")
                     # result = os.system(commandString)
                 except:
-                    self._logger.info("error restarting %s. check service status manually." % serviceName)
-                    result = "error restarting %s. check service status manually." % serviceName
+                    self._logger.info(f"error restarting {self._settings['roon_service_name']}. check service status manually.")
+                    result = f"error restarting {self._settings['roon_service_name']}. check service status manually."
             else:
                 self._logger.info('application must be running as admin to start/stop Windows services')
                 result = 'application must be running as admin to start/stop Windows services'
