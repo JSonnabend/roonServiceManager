@@ -99,6 +99,8 @@ class RoonServiceManager:
 
     def start(self):
         try:
+            '''start service if it is not started'''
+            self.start_core_service()
             # authorize if necessary
             try:
                 if self._settings["core_id"].strip() == "" or self._settings["token"] == "":
@@ -214,7 +216,7 @@ class RoonServiceManager:
         responseTime = "not calculated"
         try:
             self._pingcount += 1
-            coreString = "'%s' at %s:%s" % (self._roon.core_name, self._roon.host, self._roon.port)
+            coreString = "'%s' at %s:%s" % (self._roon.core_name, self._roon.host, self._roon._port)
             self._logger.debug("pinging core %s. (%s)" % (coreString, self._pingcount))
             # start = time.time()
             start = datetime.datetime.now()
@@ -231,8 +233,34 @@ class RoonServiceManager:
             self._lastping = {'pingcount':self._pingcount,'pingtime':pingTime,'responseTime':responseTime, 'response': response}
         if responseTime > self._settings["max_allowed_response_time"]:
             self.restart_core_service()
+        return self._lastping
 
-    def restart_core_service(self):
+    def start_core_service(self):
+        try:
+            if isAdmin():
+                try:
+                    self._logger.info(f"starting {self._settings['roon_service_name']}")
+                    from subprocess import run
+                    commandString = f"net start \"{self._settings['roon_service_name']}\""
+                    processResult = run(commandString, capture_output=True)
+                    stderr = processResult.stderr.decode("utf-8")
+                    stdout = processResult.stdout.decode("utf-8")
+                    # result = result + "\n"
+                    result = processResult.stdout if stdout.strip() != "" else stderr
+                    result = str(result, 'utf-8')
+                    self._logger.info(f"start result: {result}")
+                    # result = os.system(commandString)
+                except:
+                    self._logger.info(f"error starting {self._settings['roon_service_name']}. check service status manually.")
+                    result = f"error starting {self._settings['roon_service_name']}. check service status manually."
+            else:
+                self._logger.info('application must be running as admin to start/stop Windows services')
+                result = 'application must be running as admin to start/stop Windows services'
+        finally:
+            return result
+
+
+    def stop_core_service(self):
         try:
             if isAdmin():
                 try:
@@ -245,25 +273,25 @@ class RoonServiceManager:
                     stdout = processResult.stdout.decode('utf-8')
                     result = processResult.stdout if stdout.strip() != "" else stderr
                     result = str(result, 'utf-8')
-                    self._logger.info(f"{result}")
-                    # os.system(commandString)
-                    time.sleep(1)
-                    commandString = f"net start \"{self._settings['roon_service_name']}\""
-                    processResult = run(commandString, capture_output=True)
-                    stderr = processResult.stderr.decode("utf-8")
-                    stdout = processResult.stdout.decode("utf-8")
-                    # result = result + "\n"
-                    nextresult = processResult.stdout if stdout.strip() != "" else stderr
-                    nextresult = str(nextresult, 'utf-8')
-                    result = result + "\n" + nextresult
-                    self._logger.info(f"{result}")
-                    # result = os.system(commandString)
+                    self._logger.info(f"stop result: {result}")
                 except:
                     self._logger.info(f"error restarting {self._settings['roon_service_name']}. check service status manually.")
                     result = f"error restarting {self._settings['roon_service_name']}. check service status manually."
             else:
                 self._logger.info('application must be running as admin to start/stop Windows services')
                 result = 'application must be running as admin to start/stop Windows services'
+        finally:
+            return result
+
+
+    def restart_core_service(self):
+        try:
+            result = self.stop_core_service()
+            time.sleep(1)
+            result = result + self.start_core_service()
+        except:
+            self._logger.info(f"error restarting {self._settings['roon_service_name']}. check service status manually.")
+            result = f"error restarting {self._settings['roon_service_name']}. check service status manually."
         finally:
             return result
 
