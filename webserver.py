@@ -5,9 +5,9 @@ import shlex, argparse
 webserver = Flask(__name__)
 roonservicemanager = None
 parser = argparse.ArgumentParser()
-parser.add_argument('-i', '--indent', type=int, default=0)
+parser.add_argument('-i', '--indent', type=int, default=4)
 
-def run(host="0.0.0.0", port="8007"):
+def run(host="0.0.0.0", port="18007"):
     webserver.config['JSONIFY_PRETTYPRINT_REGULAR'] = True
     webserver.run(host, port)
 
@@ -122,8 +122,11 @@ def terminal():
                 result = restart(indent=indent)
             case "status":
                 result = status(indent=indent)
-            case "zones":
-                result = zones(indent=indent)
+            case _ as _command if _command=="zones" or _command=="zone":
+                if len(tokens) < 1:
+                    result = zones(indent=indent)
+                else:
+                    result = zones(zone=tokens[0], indent=indent)
             case "ping":
                 result = ping(indent=indent)
             case "log":
