@@ -57,7 +57,6 @@ def _list(list_type='', indent = 0):
         return Response(response=result, status=200, mimetype="text/plain")
 
 
-
 @webserver.route("/zones")
 @webserver.route("/zones/<zone>") #zone is index (from list zones) or name
 def zones(zone='', indent = 0):

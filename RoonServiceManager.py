@@ -1,5 +1,3 @@
-
-
 import sys
 # path to roonapi folder
 sys.path.append('\\pyRoon\\pyRoonLib\\roonapi')
