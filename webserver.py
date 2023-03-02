@@ -5,6 +5,8 @@ import shlex, argparse
 webserver = Flask(__name__)
 roonservicemanager = None
 parser = argparse.ArgumentParser()
+parser.add_argument('command')
+parser.add_argument('sub_command', default='', nargs='?')
 parser.add_argument('-i', '--indent', type=int, default=4)
 
 def run(host="0.0.0.0", port="18007"):
@@ -111,11 +113,12 @@ def settings(indent = 0):
 @webserver.route("/terminal")
 def terminal():
     line = request.args.get('line')
-    tokens = shlex.split(line.lower())
+    tokens = shlex.split(line)
     result = ""
     try:
-        command = tokens.pop(0)
+        # command = tokens.pop(0)
         args, unknown = parser.parse_known_args(tokens)
+        command = args.command.lower()
         indent = args.indent
         match command:
             case "restart":
@@ -123,10 +126,10 @@ def terminal():
             case "status":
                 result = status(indent=indent)
             case _ as _command if _command=="zones" or _command=="zone":
-                if len(tokens) < 1:
+                if args.sub_command=='':
                     result = zones(indent=indent)
                 else:
-                    result = zones(zone=tokens[0], indent=indent)
+                    result = zones(zone=args.sub_command, indent=indent)
             case "ping":
                 result = ping(indent=indent)
             case "log":
@@ -134,10 +137,10 @@ def terminal():
             case "settings":
                 result = settings(indent=indent)
             case "list":
-                if len(tokens) < 1:
+                if args.sub_command=='':
                     result = _list(indent=indent)
                 else:
-                    result = _list(list_type=tokens[0], indent=indent)
+                    result = _list(list_type=args.sub_command, indent=indent)
             case _:
                 result = f"{{{command}}} not implemented."
         # return json data if it exists, else return plain text result string

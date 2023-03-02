@@ -3,7 +3,7 @@ $(function() {
         options: [],
         args: []
     };
-    var commands = ['restart', 'status', 'zones', 'log', 'ping', 'settings', 'cls', 'help'];
+    var commands = ['restart', 'status', 'zones &#91;zone_name|zone_number&#93;', 'list &#91;zones&#93;', 'log', 'ping', 'settings', 'cls', 'help'];
 
 
 
@@ -18,12 +18,13 @@ $(function() {
          }
        },
        {help: function(line){
-            this.echo('available commands are [[b;white;]' + commands.join(' ') + ']')
+            this.echo('available commands are\n\t[[b;white;]' + commands.join('\n\t') + ']')
          }
        },
       function(line, term) {
         this.echo($.get('/terminal', {line: line}))
-      }], {
+      }],
+      {
         greetings: 'RoonServiceManager Terminal',
         autocompleteMenu: true,
         echoCommand: true,

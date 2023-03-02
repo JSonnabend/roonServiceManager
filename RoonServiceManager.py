@@ -178,16 +178,14 @@ class RoonServiceManager:
 
         api = auth_api[0]
 
-        self._logger.info("Got authorisation")
-        self._logger.info("\t\thost ip: " + api.host)
-        self._logger.info("\t\tcore name: " + api.core_name)
-        self._logger.info("\t\tcore id: " + api.core_id)
-        self._logger.info("\t\ttoken: " + api.token)
+        self._logger.info(f"Got authorisation\n\t\thost ip: {api.host}\
+                          \n\t\tcore name: {api.core_name}\n\t\tcore id: {api.core_id}\
+                          \n\t\ttoken: {api.token}")
         # This is what we need to reconnect
         self.settings["core_id"] = api.core_id
         self.settings["token"] = api.token
 
-        self._logger.info("leaving authorize with settings: %s" % settings)
+        self._logger.info(f"leaving authorize with settings: {self.settings}")
 
         self._logger.info("Shutdown apis")
         for api in apis:
