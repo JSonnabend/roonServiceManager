@@ -7,11 +7,13 @@ $(function() {
 
     // resize event listener to detect change in screen height
     window.addEventListener("resize", (e) => { setTimeout(function () {
-        let viewheight = window.visualViewport.height;
-        let viewwidth = $(window).width();
-        $('#terminal').css('height',viewheight + "px");
-        $('#terminal').css('width',viewwidth + "px");
-        $('body').css('height',viewheight + "px");
+        var viewheight = window.visualViewport.height;
+        var viewwidth = window.visualViewport.width;
+        $('#terminal').height(viewheight * .9);
+//        $('#terminal').width(viewwidth * .95);
+        $('body').height(viewheight * .95);
+//        let viewport = document.querySelector("meta[name=viewport]");
+        $("meta[name=viewport]").height(viewheight);
         }, 300);
       });
 
