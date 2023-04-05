@@ -1,5 +1,3 @@
-
-
 import sys
 # path to roonapi folder
 sys.path.append('\\pyRoon\\pyRoonLib\\roonapi')
@@ -11,20 +9,20 @@ import threading
 import logging
 from logging.handlers import RotatingFileHandler
 
-logger = logging.getLogger('roonservicemanager')
-# configure file logging
-file_handler = RotatingFileHandler('roonservicemanager.log', maxBytes=1e5, backupCount=5)
-file_handler.setLevel(logging.DEBUG)
-formatter = logging.Formatter(fmt='%(asctime)s %(levelname)s %(message)s', datefmt='%Y-%m-%d %H:%M:%S')
-file_handler.setFormatter(formatter)
-logger.addHandler(file_handler)
-# configure console logging
-stream_handler = logging.StreamHandler()
-stream_handler.setLevel(logging.DEBUG)
-stream_handler.setFormatter(formatter)
-logger.addHandler(stream_handler)
-
 def main():
+    logger = logging.getLogger('roonservicemanager')
+    # configure file logging
+    file_handler = RotatingFileHandler('roonservicemanager.log', maxBytes=1e5, backupCount=5)
+    file_handler.setLevel(logging.DEBUG)
+    formatter = logging.Formatter(fmt='%(asctime)s %(levelname)s %(message)s', datefmt='%Y-%m-%d %H:%M:%S')
+    file_handler.setFormatter(formatter)
+    logger.addHandler(file_handler)
+    # configure console logging
+    stream_handler = logging.StreamHandler()
+    stream_handler.setLevel(logging.DEBUG)
+    stream_handler.setFormatter(formatter)
+    logger.addHandler(stream_handler)
+    logger.setLevel(logging.DEBUG)
     logger.info('running main')
     appinfo = {
         "extension_id": "sonnabend.roon.servicemanager",
@@ -36,12 +34,12 @@ def main():
     logger.info('createing RoonServiceManager with appinfo: %s' % appinfo)
     roonServiceManager = RoonServiceManager()
     roonServiceManager.appinfo = appinfo
+    roonServiceManager.logger = logger
     logger.info('calling roonServiceManager.start()')
     roonServiceManager.start()
 
 class RoonServiceManager:
-    global logger
-    _logger = logger
+    _logger = None
     _pingcount = 0
     _lastping = None
     _settings = None
@@ -56,6 +54,12 @@ class RoonServiceManager:
     }
     _roon = None
 
+    @property
+    def logger(self):
+        return self._logger
+    @logger.setter
+    def logger(self, value):
+        self._logger = value
 
     @property
     def settings(self):
@@ -83,22 +87,22 @@ class RoonServiceManager:
 
     def __init__(self, appinfo=""):
         self._appinfo = appinfo
-        self.loadSettings()
-        logLevelString = self._settings.get("log_level", "INFO").upper()
-        if logLevelString == "DEBUG" or inDebugger():
-            level = logging.DEBUG
-        elif logLevelString == "INFO":
-            level = logging.INFO
-        elif logLevelString == "WARNING":
-            level = logging.WARNING
-        elif logLevelString == "ERROR":
-            level = logging.ERROR
-        elif logLevelString == "CRITICAL":
-            level = logging.CRITICAL
-        self._logger.setLevel(level)
 
     def start(self):
         try:
+            self.loadSettings()
+            logLevelString = self._settings.get("log_level", "INFO").upper()
+            if logLevelString == "DEBUG" or inDebugger():
+                level = logging.DEBUG
+            elif logLevelString == "INFO":
+                level = logging.INFO
+            elif logLevelString == "WARNING":
+                level = logging.WARNING
+            elif logLevelString == "ERROR":
+                level = logging.ERROR
+            elif logLevelString == "CRITICAL":
+                level = logging.CRITICAL
+            self._logger.setLevel(level)
             '''start service if it is not started'''
             self.start_core_service()
             # authorize if necessary
@@ -115,6 +119,8 @@ class RoonServiceManager:
             self._settings["roon_service_name"] = self._settings.get("roon_service_name", "RoonServer")
             self._settings["ping_delay"] = self._settings.get("ping_delay", 60)
             self._settings["roon_service_name"] = self._settings.get("roon_service_name", "RoonServer")
+            #save settings to update core_id and token if necessary
+            self.saveSettings()
             ''' subscribe to status notifications '''
             # self._roon.register_state_callback(self._state_change_callback)
             ''' subscribe to queue notifications '''
@@ -180,16 +186,14 @@ class RoonServiceManager:
 
         api = auth_api[0]
 
-        self._logger.info("Got authorisation")
-        self._logger.info("\t\thost ip: " + api.host)
-        self._logger.info("\t\tcore name: " + api.core_name)
-        self._logger.info("\t\tcore id: " + api.core_id)
-        self._logger.info("\t\ttoken: " + api.token)
+        self._logger.info(f"Got authorisation\n\t\thost ip: {api.host}\
+                          \n\t\tcore name: {api.core_name}\n\t\tcore id: {api.core_id}\
+                          \n\t\ttoken: {api.token}")
         # This is what we need to reconnect
         self.settings["core_id"] = api.core_id
         self.settings["token"] = api.token
 
-        self._logger.info("leaving authorize with settings: %s" % settings)
+        self._logger.info(f"leaving authorize with settings: {self.settings}")
 
         self._logger.info("Shutdown apis")
         for api in apis:
