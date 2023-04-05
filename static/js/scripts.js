@@ -10,6 +10,7 @@ $(function() {
         var viewheight = window.visualViewport.height;
         var viewwidth = window.visualViewport.width;
         $('#terminal').height(viewheight * .9);
+        $('#wrapper').height(viewheight * .9);
 //        $('#terminal').width(viewwidth * .95);
         $('body').height(viewheight * .95);
 //        let viewport = document.querySelector("meta[name=viewport]");
