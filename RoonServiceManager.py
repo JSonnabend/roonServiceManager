@@ -53,6 +53,7 @@ class RoonServiceManager:
         "email": "",
     }
     _roon = None
+    _rooncommands = None
 
     @property
     def logger(self):
@@ -134,6 +135,7 @@ class RoonServiceManager:
             import webserver
             self._settings["webserver_port"] = self._settings.get("webserver_port", 18007)
             webserver.roonservicemanager = self
+            webserver._rooncommands.roon = self._roon
             thread = threading.Thread(target=webserver.run, kwargs={'port':self._settings["webserver_port"]})
             thread.start()
             '''run main loop'''
