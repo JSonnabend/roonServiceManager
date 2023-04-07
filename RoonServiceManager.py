@@ -304,8 +304,10 @@ class RoonServiceManager:
     def loadSettings(self):
         self._logger.info("running from %s" % __file__)
         if inDebugger():
+            self._logger.info('inDebugger() == True')
             self._dataFolder = os.path.dirname(__file__)
         else:
+            self._logger.info('inDebugger() == False')
             self._dataFolder = os.path.join(os.getenv('APPDATA'), 'pyRoonServiceManager')  #os.path.abspath(os.path.dirname(__file__))
         self._dataFile = os.path.join(self._dataFolder , 'settings.dat')
         self._logger.info("using dataFile: %s" % self._dataFile)
@@ -343,7 +345,7 @@ def isAdmin():
     return is_admin
 
 def inDebugger():
-    return not (getattr(sys, 'gettrace', None) == None)
+    return  hasattr(sys, 'gettrace') and sys.gettrace() is not None
 
 def test():
     appinfo = {
