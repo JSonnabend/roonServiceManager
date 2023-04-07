@@ -303,7 +303,7 @@ class RoonServiceManager:
 
     def loadSettings(self):
         self._logger.info("running from %s" % __file__)
-        if inDebugger(): #("_" in __file__): # running in temp directory, so not from PyCharm
+        if inDebugger():
             self._dataFolder = os.path.dirname(__file__)
         else:
             self._dataFolder = os.path.join(os.getenv('APPDATA'), 'pyRoonServiceManager')  #os.path.abspath(os.path.dirname(__file__))
@@ -343,7 +343,7 @@ def isAdmin():
     return is_admin
 
 def inDebugger():
-    return not ("_" in __file__)
+    return not (getattr(sys, 'gettrace', None) == None)
 
 def test():
     appinfo = {
