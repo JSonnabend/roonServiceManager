@@ -45,7 +45,7 @@ def status(indent = 0):
         return Response(response=result, status=200, mimetype="application/json")
 
 
-def get_zone_by_name_or_index(name_or_index, indent=0):
+def get_zone_by_name_or_index(name_or_index):
     #return results for specified zone
     if name_or_index == '':
         return None
@@ -89,7 +89,10 @@ def _list(list_type='', indent = 0, **kwargs):
                     result = f"zone {kwargs.get('zone', '')} not found"
                     return Response(response=result, status=404, mimetype="text/plain")
                 zone = zone['display_name']
-                title = kwargs.get('title', '')
+                if request.args.get('title', '') != '':
+                    title = request.args.get('title')
+                else:
+                    title = kwargs.get('title', '')
                 playlists = _rooncommands.list_playlists(zone, title)
                 for index, playlist in enumerate(playlists):
                     result = result + f"[{index}]\t{playlist}\n"
@@ -112,8 +115,10 @@ def zones(zone='', indent = 0):
         if zone == '':
             result = f"{json.dumps(roonservicemanager.roon.zones, indent=indent)}"
         else:
-            zone = get_zone_by_name_or_index(zone)
-        if zone == None:
+            result = get_zone_by_name_or_index(zone)
+            if result:
+                result = f"{json.dumps(result, indent=indent)}"
+        if result == None:
             return f"zone {{{zone}}} not found. (Note zone names are case sensitive. Use \"list zones\" command to see zone names.)"
         else:
             return Response(response=result, status=200, mimetype="application/json")
