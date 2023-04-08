@@ -20,12 +20,12 @@ def run(host="0.0.0.0", port="18007"):
 def test():
     result = f"{roonservicemanager.roon.zone_by_name('Saint Zoey')}"
     return Response(response=result, status=200, mimetype="application/json")
-    pass
 
 @webserver.route("/restart")
 def restart(indent = 0):
     if roonservicemanager is None:
-        return "roonservicemanager not initialized"
+        result = "roonservicemanager not initialized"
+        return Response(response=result, status=503, mimetype="text/plain")
     else:
         result = f"{roonservicemanager.restart_core_service()}"
         return Response(response=result, status=200, mimetype="application/json")
@@ -33,7 +33,8 @@ def restart(indent = 0):
 @webserver.route("/status")
 def status(indent = 0):
     if roonservicemanager is None:
-        return "roonservicemanager not initialized"
+        result = "roonservicemanager not initialized"
+        return Response(response=result, status=503, mimetype="text/plain")
     else:
         result = {'token': roonservicemanager.roon.token,
                   'host': roonservicemanager.roon.host,
@@ -66,7 +67,8 @@ def get_zone_by_name_or_index(name_or_index):
 @webserver.route("/list/<list_type>")
 def _list(list_type='', indent = 0, **kwargs):
     if list_type == '':
-        return "list_type missing"
+        result = "list_type missing"
+        return Response(response=result, status=400, mimetype="text/plain")
     else:
         match list_type.lower():
             case "zones":
@@ -107,7 +109,8 @@ def _list(list_type='', indent = 0, **kwargs):
 @webserver.route("/zones/<zone>") #zone is index (from list zones) or name
 def zones(zone='', indent = 0):
     if roonservicemanager is None:
-        return "roonservicemanager not initialized"
+        result = "roonservicemanager not initialized"
+        return Response(response=result, status=503, mimetype="text/plain")
     else:
         if request.args.get('indent', '') != '':
             indent = int(request.args.get('indent')) if request.args.get('indent').isdigit() else 0
@@ -125,9 +128,10 @@ def zones(zone='', indent = 0):
 
 @webserver.route("/play")
 @webserver.route("/play/<type>")
-def play(title='', type='', zone='', indent = 0):
+def play(title='', type='', zone='', shuffle=False, indent = 0):
     if roonservicemanager is None:
-        return "roonservicemanager not initialized"
+        result = "roonservicemanager not initialized"
+        return Response(response=result, status=503, mimetype="text/plain")
     else:
         if request.args.get('type', '') != '':
             item_type = request.args.get('type')
@@ -135,6 +139,8 @@ def play(title='', type='', zone='', indent = 0):
             item_type = type
         if request.args.get('zone', '') != '':
             zone = request.args.get('zone')
+        if request.args.get('shuffle', '') != '':
+            shuffle = request.args.get('shuffle') != '0'
         if request.args.get('indent', '') != '' and request.args.get('indent').isdigit():
             indent = int(request.args.get('indent'))
         if request.args.get('title', '') != '':
@@ -157,14 +163,15 @@ def play(title='', type='', zone='', indent = 0):
                 return Response(response=result, status=200, mimetype="application/json")
             zone = zone['display_name']
 
-        result = _rooncommands.play_playlist(title, zone)
+        result = _rooncommands.play_playlist(title, zone, shuffle=shuffle)
 
         return Response(response=result, status=200, mimetype="application/json")
 
 @webserver.route("/ping")
 def ping(indent = 0):
     if roonservicemanager is None:
-        return "roonservicemanager not initialized"
+        result = "roonservicemanager not initialized"
+        return Response(response=result, status=503, mimetype="text/plain")
     else:
         result = f"{json.dumps(roonservicemanager.ping_core(), indent=indent)}"
         return Response(response=result, status=200, mimetype="application/json")
@@ -172,7 +179,8 @@ def ping(indent = 0):
 @webserver.route("/getlog")
 def getlog(indent = 0):
     if roonservicemanager is None:
-        return "roonservicemanager not initialized"
+        result = "roonservicemanager not initialized"
+        return Response(response=result, status=503, mimetype="text/plain")
     else:
         result = f"{roonservicemanager.getLog()}"
         return Response(response=result, status=200, mimetype="application/json")
@@ -180,7 +188,8 @@ def getlog(indent = 0):
 @webserver.route("/settings")
 def settings(indent = 0):
     if roonservicemanager is None:
-        return "roonservicemanager not initialized"
+        result = "roonservicemanager not initialized"
+        return Response(response=result, status=503, mimetype="text/plain")
     else:
         result = f"{json.dumps(roonservicemanager.settings, indent=indent)}"
         return Response(response=result, status=200, mimetype="application/json")
